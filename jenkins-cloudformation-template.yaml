@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Reusable CloudFormation Template to create a Jenkins EC2 instance with a custom security group
+
+Resources:
+  JenkinsSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: jenkins-sg
+      GroupDescription: Enable SSH and TCP on port 8080
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+
+  MyEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties: 
+      InstanceType: t2.micro
+      ImageId: ami-0490fddec0cbeb88b  # Specified AMI
+      SecurityGroupIds: 
+        - !Ref JenkinsSecurityGroup
+      Tags:
+        - Key: Name
+          Value: Jenkins  # Instance Name
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+            sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+            sudo dnf upgrade -y
+            sudo dnf install fontconfig java-17 -y
+            sudo dnf install jenkins -y
+            sudo systemctl daemon-reload
+            sudo systemctl enable jenkins
+            sudo systemctl start jenkins
+            sudo systemctl status jenkins
+
+Outputs:
+  InstanceId:
+    Description: The instance ID of the EC2 instance
+    Value: !Ref MyEC2Instance
